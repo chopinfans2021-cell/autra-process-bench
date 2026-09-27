@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>奥川工艺台 AUTRA Process Bench</title>
+<style>
+:root{--bg:#071018;--panel:#0e1a24;--line:#1e3344;--text:#e8eef3;--muted:#8aa0b3;--accent:#c4a574;--ok:#7dcea0;--warn:#e7b56a;--bad:#e07a6a;}
+*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI","PingFang SC","Noto Sans SC",sans-serif;background:radial-gradient(1200px 600px at 10% -10%,#123044 0%,var(--bg) 45%);color:var(--text)}
+header{padding:28px 8vw 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{font-size:13px;letter-spacing:.18em;color:var(--accent)}
+h1{margin:6px 0 0;font-size:28px}header p{margin:8px 0 0;color:var(--muted);max-width:720px;line-height:1.6}
+.badge{align-self:flex-start;border:1px solid var(--accent);color:var(--accent);padding:6px 10px;font-size:12px;border-radius:999px}
+main{padding:24px 8vw 80px;display:grid;grid-template-columns:1.1fr .9fr;gap:22px}
+@media(max-width:980px){main{grid-template-columns:1fr}}
+.card{background:rgba(14,26,36,.92);border:1px solid var(--line);border-radius:16px;padding:18px}
+h2{margin:0 0 14px;font-size:16px}.step{color:var(--accent);font-size:12px;letter-spacing:.12em;margin-bottom:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.opt{border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;background:#0b1620}
+.opt.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.opt b{display:block;font-size:13px}.opt span{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+input,select,textarea{width:100%;background:#08131b;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px;font:inherit}
+textarea{min-height:72px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+button{border:0;border-radius:10px;padding:10px 14px;cursor:pointer;font:inherit}
+.primary{background:var(--accent);color:#1a1208}.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.result h3{margin:16px 0 8px;font-size:14px;color:var(--accent)}
+.codes{display:flex;gap:8px;flex-wrap:wrap}
+.code{background:#132433;border:1px solid #2b4a61;padding:6px 10px;border-radius:999px;font-family:ui-monospace,Consolas,monospace}
+ul{margin:6px 0 0 18px;color:#d5e2ec}li{margin:4px 0}
+.warn{color:var(--warn)}.ok{color:var(--ok)}.muted{color:var(--muted);font-size:13px;line-height:1.6}
+#sheet{white-space:pre-wrap;background:#08131b;border:1px dashed #355064;border-radius:12px;padding:14px;font-size:13px;line-height:1.55;min-height:240px}
+footer{padding:0 8vw 40px;color:var(--muted);font-size:12px;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="brand">AUTRA CHEMICAL · CONCEPT TOOL</div>
+    <h1>奥川工艺台</h1>
+    <p>按基材和目标功能推荐可指名工艺号，并生成打样评估单。不输出开缸表、蚀刻分钟数或活化浓度。这不是奥川官方系统，也不是产线 MES。</p>
+  </div>
+  <div class="badge">概念工具 · 非官网</div>
+</header>
+<main>
+  <section class="card">
+    <div class="step">STEP 01</div>
+    <h2>基材</h2>
+    <div class="grid" id="subs"></div>
+    <div class="step" style="margin-top:18px">STEP 02</div>
+    <h2>目标功能（可多选）</h2>
+    <div class="grid" id="goals"></div>
+    <div class="step" style="margin-top:18px">STEP 03</div>
+    <h2>件信息</h2>
+    <div class="row">
+      <div><label>材料牌号 / 填料</label><input id="grade" placeholder="例：Victrex 450G / PEEK CF30 / AlN" /></div>
+      <div><label>目标厚度 μm</label><input id="thick" type="number" min="0.2" step="0.1" placeholder="例：8" /></div>
+    </div>
+    <div class="row">
+      <div><label>数量</label><input id="qty" type="number" min="1" placeholder="例：8" /></div>
+      <div><label>后续工序</label><select id="post">
+        <option value="无">无特殊后工序</option>
+        <option value="电镍加厚">电镍加厚</option>
+        <option value="回流/焊接">回流 / 焊接</option>
+        <option value="热处理">热处理</option>
+        <option value="装配滑动">装配滑动</option>
+      </select></div>
+    </div>
+    <label>备注 / 禁镍区 / 验收标准</label>
+    <textarea id="note" placeholder="例：要做 EMI 屏蔽，不能塞孔，热震 -40~150℃"></textarea>
+    <div class="btns">
+      <button class="primary" onclick="run()">生成工艺建议</button>
+      <button class="ghost" onclick="printSheet()">打印评估单</button>
+      <button class="ghost" onclick="copySheet()">复制文本</button>
+    </div>
+  </section>
+  <section class="card result">
+    <div class="step">OUTPUT</div>
+    <h2>推荐工艺号</h2>
+    <div class="codes" id="codes"><span class="muted">先选基材和功能</span></div>
+    <h3>公开路径</h3>
+    <div class="muted" id="path">不显示开缸公式。</div>
+    <h3>验收与禁止项</h3>
+    <ul id="checks"></ul>
+    <h3>打样评估单</h3>
+    <div id="sheet">待生成</div>
+  </section>
+</main>
+<footer>
+  联系参考：400-889-0021 / 18918191170 · 微信 Autra-SY-2030 · www.shautra.com<br/>
+  奥川 AUTRA ≠ 奥野 Okuno · Kanigen 为授权药水背书 · 工艺号为建议编码，上线前需内部确认。
+</footer>
+<script>
+const SUBS=[
+  {id:"peek",name:"PEEK / PEI / PPS",desc:"工程塑料连接器、EMI 壳"},
+  {id:"cer",name:"陶瓷 / 石英 / 玻璃",desc:"Al2O3、AlN、LTCC、石英窗"},
+  {id:"gf",name:"玻纤 / 碳纤 / 微珠",desc:"导电填料、屏蔽橡胶"},
+  {id:"el",name:"尼龙 / PVC / 橡胶",desc:"低表面能或整件薄镍"},
+  {id:"metal",name:"钢 / 铜 / 铝 / 钛",desc:"通用功能化学镍"}
+];
+const GOALS=[
+  {id:"cond",name:"导电底层"},{id:"emi",name:"电磁屏蔽"},{id:"wear",name:"耐磨"},
+  {id:"corr",name:"耐蚀"},{id:"solder",name:"可焊"},{id:"ptfe",name:"不粘/减摩"},
+  {id:"black",name:"低反射"}
+];
+let sub="peek", goals=new Set(["cond"]);
+function chips(el,arr,multi){
+  el.innerHTML=arr.map(x=>`<div class="opt ${multi?(goals.has(x.id)?"active":""):(sub===x.id?"active":"")}" data-id="${x.id}"><b>${x.name}</b>${x.desc?`<span>${x.desc}</span>`:""}</div>`).join("");
+  [...el.children].forEach(n=>n.onclick=()=>{
+    if(multi){goals.has(n.dataset.id)?goals.delete(n.dataset.id):goals.add(n.dataset.id); if(!goals.size)goals.add(n.dataset.id)}
+    else sub=n.dataset.id;
+    chips(subs,SUBS,false); chips(document.getElementById("goals"),GOALS,true);
+  });
+}
+chips(document.getElementById("subs"),SUBS,false);
+chips(document.getElementById("goals"),GOALS,true);
+function rec(){
+  const g=[...goals], codes=[], path=[], checks=[], forbid=[];
+  if(sub==="peek"){codes.push("AUT-EN-PEEK"); path.push("机械粗化窗口 → 无铬蚀刻 → 胶体钠 → 薄碱性打底 → 中/高磷加厚"); checks.push("划格或热震","方阻","厚度极差","磷含量"); forbid.push("不同树脂牌号不能套同一蚀刻时间","不用塑镍打底镍当功能厚镍");}
+  if(sub==="cer"){codes.push("AUT-EN-CER"); path.push("区分陶瓷种类 → 弱粗化或偶联 → Pd → 镍硼或薄中磷"); checks.push("结合力","厚度均匀","表面无露陶"); forbid.push("AlN 禁强碱、必须烘干切水","石英锁死 HF 时间，避免过蚀和堵孔");}
+  if(sub==="gf"){codes.push("AUT-EN-GF"); path.push("除胶/分散 → 控纤维外露 → 高覆盖活化 → 中高磷"); checks.push("电阻率","镍覆率","破珠/断纤率"); forbid.push("不按装饰光泽验收");}
+  if(sub==="el"){codes.push("AUT-EN-EL"); path.push("尼龙以溶胀为主；橡胶整件只做薄、低温、碱性低应力镍"); checks.push("结合力","表面连续性","低应力"); forbid.push("橡胶不要按金属件要 20 μm 高磷","屏蔽橡胶优先走镍镍玻纤填料");}
+  if(sub==="metal"){codes.push("AUT-EN-M"); path.push("除油 → 活化 → Kanigen 中磷通用功能层（按需换低/高磷）"); checks.push("厚度","硬度或盐雾","孔隙");}
+  if(g.includes("corr")) codes.push(sub==="metal"?"AUT-EN-H":"AUT-EN-H");
+  if(g.includes("wear")) { if(sub==="metal"||sub==="gf"||sub==="peek") codes.push("AUT-CF-SiC"); }
+  if(g.includes("ptfe")) codes.push("AUT-CF-PTFE");
+  if(g.includes("solder")) codes.push("AUT-NB");
+  if(g.includes("black")) codes.push("AUT-BK");
+  if(g.includes("emi") && sub!=="gf") codes.push(sub==="peek"?"AUT-EN-PEEK":"AUT-EN-M");
+  if(g.includes("cond") && !codes.includes("AUT-EN-PEEK") && sub==="peek") codes.push("AUT-EN-PEEK");
+  const uniq=[...new Set(codes)];
+  const thick=+document.getElementById("thick").value;
+  if(sub==="el" && thick>=15) forbid.push("厚度偏高，弹性体建议先打样 1–3 μm");
+  if(sub==="peek" && thick && thick<0.5) forbid.push("导电底层可以薄，但要写清是否还要加厚");
+  return {uniq,path,checks,forbid};
+}
+function run(){
+  const r=rec();
+  document.getElementById("codes").innerHTML=r.uniq.map(c=>`<span class="code">${c}</span>`).join("");
+  document.getElementById("path").textContent=r.path.join("；");
+  document.getElementById("checks").innerHTML=[...r.checks.map(x=>`<li class="ok">${x}</li>`),...r.forbid.map(x=>`<li class="warn">${x}</li>`)].join("");
+  const subName=SUBS.find(s=>s.id===sub).name;
+  const goalName=GOALS.filter(g=>goals.has(g.id)).map(g=>g.name).join("、");
+  const no= "AUT-RFQ-" + new Date().toISOString().slice(0,10).replaceAll("-","") + "-" + Math.floor(Math.random()*90+10);
+  document.getElementById("sheet").textContent=`奥川工艺台 打样评估单
+编号：${no}
+性质：概念工具输出，不含开缸配方
+
+基材：${subName}
+牌号/填料：${document.getElementById("grade").value||"（待补）"}
+目标功能：${goalName}
+目标厚度：${document.getElementById("thick").value||"（待补）"} μm
+数量：${document.getElementById("qty").value||"（待补）"}
+后续工序：${document.getElementById("post").value}
+备注：${document.getElementById("note").value||"无"}
+
+推荐工艺号：${r.uniq.join(" + ")}
+公开路径：${r.path.join(" → ")}
+验收建议：${r.checks.join("、")}
+风险/禁止：${r.forbid.join("、")||"按工艺卡执行"}
+
+请客户同步提供：材料牌号与填料、成型/烧结状态、禁镍区、目标厚度与极差、结合力方法。
+下一步：2 个工作日内评估能否打样 → 5–10 件 DOE → 带工艺号的报告。
+
+联系：400-889-0021 / 18918191170 / 微信 Autra-SY-2030`;}
+function printSheet(){run(); const w=window.open("","print"); w.document.write(`<pre style="font:14px/1.55 sans-serif;white-space:pre-wrap;padding:24px">${document.getElementById("sheet").textContent}</pre>`); w.document.close(); w.print();}
+function copySheet(){run(); navigator.clipboard.writeText(document.getElementById("sheet").textContent).then(()=>alert("已复制评估单"));}
+run();
+</script>
+</body>
+</html>
